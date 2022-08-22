@@ -2,19 +2,20 @@
 
 const voteAddButton = document.querySelector(".fa-plus");
 const voteMinusButton = document.querySelector(".fa-minus");
-
 const container = document.querySelector(".app-container");
-const newComment = document.querySelector(".new-comment");
+// const newComment = document.querySelector(".new-comment");
 const inputField = document.querySelector(".input-comment");
 const sendButton = document.getElementById("send");
 
 let reply = false;
 let currId;
 let comments;
-let id;
+let id = 50;
 let replyInput;
+let updateInput;
 let replyBox;
 let html;
+let update = true;
 
 class Person {
   constructor(id, username) {
@@ -63,7 +64,7 @@ class App {
 
   _getCommentsdata(data) {
     comments = data.comments;
-    let reply;
+
     console.log(comments);
 
     comments.forEach((cmt, i) => {
@@ -157,9 +158,7 @@ class App {
           "</div>" +
           "</div>"
         : reply?.username === "juliusomo"
-        ? `<div class="edit-icons" data-key="${
-            comment ? comment.id : reply.id
-          }">` +
+        ? `<div class="edit-icons">` +
           `<div class="pen" data-id="${comment ? comment.id : reply.id}">` +
           '<i class="fa-solid fa-pen"></i>' +
           '<span id="pen-text"> Edit </span>' +
@@ -190,6 +189,7 @@ class App {
       cmtContainer.insertAdjacentHTML("beforeend", html);
       container.appendChild(cmtContainer);
     }
+
     if (reply) {
       const commentContainer = document.getElementById(`${reply.parentId}`);
       commentContainer.insertAdjacentHTML("beforeend", html);
@@ -199,13 +199,13 @@ class App {
       `.cmt-reply[data-id='${comment ? comment.id : reply.id}']`
     );
 
-    replyButton.addEventListener("click", this._getReplyName.bind(this));
-
     if (comment?.username === "juliusomo" || reply?.username === "juliusomo") {
+      console.log("gets here");
       // const editBtn = document.querySelector(
       //   `.edit-icons[data-key="${comment ? comment.id : reply.id}"]`
       // );
       // editBtn.addEventListener("click", this._displayEditInfo.bind(this));
+
       const editBtn = document.querySelector(
         `.pen[data-id="${comment ? comment.id : reply.id}"]`
       );
@@ -213,25 +213,31 @@ class App {
         `.trash[data-id="${comment ? comment.id : reply.id}"]`
       );
 
-      replyButton.addEventListener("click", this._displayEditInfo.bind(this));
+      replyButton.addEventListener("click", this._displayEditInfo);
 
       editBtn.addEventListener("click", this._editComments.bind(this));
 
       deleteBtn.addEventListener("click", this._deleteComments.bind(this));
+    } else {
+      replyButton.addEventListener("click", this._getReplyName.bind(this));
     }
+
+    if (update) update = false;
   }
 
-  _getCommentHtml() {
-    html = `<div class="new-comment reply-cnt container">
+  _getCommentHtml(reply, update) {
+    html = `<div class="new-comment container reply-cnt">
     <img
       src="images/avatars/image-juliusomo.webp"
       alt="Picture of a person"
     />
     <form>
       <!-- prettier-ignore -->
-      <textarea placeholder="Add a reply..." class="input-comment reply-comment"></textarea>
+      <textarea placeholder="Add a reply..." class="input-comment reply-comment update-comment"></textarea>
     </form>
-    <button class="reply-btn" id="send">REPLY</button>
+    <button class="${
+      reply ? "reply-btn" : update ? "update-btn" : ""
+    }" id="send">${reply ? "REPLY" : "UPDATE"}</button>
   </div>`;
   }
 
@@ -243,12 +249,12 @@ class App {
     //   : !e.target.classList.contains("fa-reply");
 
     if (!e.target.classList.contains("fa-reply")) return;
-
+    if (replyBox) replyBox.remove();
     inputField.value = "";
 
+    this._getCommentHtml(true, null);
     const container = e.target.closest(".comment-container");
     container.insertAdjacentHTML("beforeend", html);
-
     replyBox = document.querySelector(".reply-cnt");
     document
       .querySelector(".reply-btn")
@@ -266,9 +272,12 @@ class App {
   }
 
   _mainUserInfo() {
-    console.log("Work");
-    id = 50;
-    const value = reply ? replyInput.value : inputField.value;
+    const value = update
+      ? updateInput.value
+      : reply
+      ? replyInput.value
+      : inputField.value;
+    console.log(value);
     const userName = "juliusomo";
     const img = "images/avatars/image-juliusomo.webp";
     const score = 0;
@@ -288,50 +297,81 @@ class App {
     );
 
     this.#personInfo.push(newObj);
+    console.log(this.#personInfo);
     this._setLocalStorage();
     if (!reply) {
       this._addComments(newObj, null);
     } else {
-      replyBox.remove();
       this._addComments(null, newObj);
+
       reply = false;
     }
+
+    if (replyBox) replyBox.remove();
     id++;
   }
 
   _displayEditInfo(e) {
     if (!e.target.classList.contains("fa-ellipsis")) return;
     const btn = e.target;
-    console.log(btn);
+
     const close = btn.closest(".cmt-reply");
+
     const sibling = close.lastElementChild;
+
     sibling.classList.toggle("active");
   }
 
   _editComments(e) {
     const comment = e.target.closest(".comment");
-    comment.remove();
     const container = e.target.closest(".comment-container");
-    console.log(container);
+    const cmtReply = comment.querySelector(".cmt-reply");
+    console.log(cmtReply);
+    comment.remove();
+    this._getCommentHtml(null, true);
     container.insertAdjacentHTML("beforeend", html);
 
     replyBox = document.querySelector(".reply-cnt");
-    document
-      .querySelector(".reply-btn")
-      .addEventListener("click", this._mainUserInfo.bind(this));
-    replyInput = document.querySelector(".reply-comment");
-    const id = container.getAttribute("id");
-    currId = id;
 
-    replyInput.value = `${"@" + username}`;
-    const end = replyInput.value.length;
-    replyInput.setSelectionRange(end, end);
-    replyInput.focus();
-    reply = true;
+    document
+      .querySelector(".update-btn")
+      .addEventListener("click", this._mainUserInfo.bind(this));
+    updateInput = document.querySelector(".update-comment");
+    console.log(this.#personInfo);
+    this.#personInfo.forEach((person, i) => {
+      if (person.id === Number(cmtReply.dataset.id)) {
+        const id = container.getAttribute("id");
+        currId = id;
+        updateInput.value = person.message;
+        const end = updateInput.value.length;
+        updateInput.setSelectionRange(end, end);
+        updateInput.focus();
+        console.log(person.type);
+        if (person.type === "reply") {
+          reply = true;
+        } else {
+          reply = false;
+        }
+        this.#personInfo.splice(i, 1);
+        update = true;
+      }
+    });
   }
 
   _deleteComments(e) {
     console.log("hello delete");
+    const comment = e.target.closest(".comment");
+    console.log(comment);
+    const cmtReply = comment.querySelector(".cmt-reply");
+    console.log(cmtReply);
+    this.#personInfo.forEach((person, i) => {
+      if (person.id === Number(cmtReply.dataset.id)) {
+        console.log("hey");
+        this.#personInfo.splice(i, 1);
+        this._setLocalStorage();
+        comment.remove();
+      }
+    });
   }
 
   _setLocalStorage() {
@@ -344,6 +384,7 @@ class App {
     data.forEach((ele) => {
       if (ele.type === "comment") this._addComments(ele, null);
       else this._addComments(null, ele);
+      this.#personInfo.push(ele);
     });
   }
 }
