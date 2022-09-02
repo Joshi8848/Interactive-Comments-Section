@@ -16,6 +16,7 @@ let updateInput;
 let replyBox;
 let html;
 let update = true;
+let innerTxt;
 
 class Person {
   constructor(id, username) {
@@ -33,7 +34,8 @@ class PersonInfo extends Person {
     message,
     createdAt,
     type,
-    parentId
+    parentId,
+    txtColor
   ) {
     super(id, username);
     this.score = score;
@@ -42,11 +44,13 @@ class PersonInfo extends Person {
     this.createdAt = createdAt;
     this.type = type;
     this.parentId = parentId;
+    this.txtColor = txtColor;
   }
 }
 
 class App {
   #personInfo = [];
+  #jsonInfo = [];
 
   constructor() {
     this._fetchData();
@@ -63,6 +67,10 @@ class App {
   }
 
   _getCommentsdata(data) {
+    const jsonItems = localStorage.getItem("jsonItems");
+
+    if (jsonItems) return;
+
     comments = data.comments;
 
     console.log(comments);
@@ -77,8 +85,9 @@ class App {
         cmt.createdAt
       );
 
+      this.#jsonInfo.push(comment);
       // this.#personInfo.push(comment);
-      this._addComments(comment, null);
+
       if (cmt && cmt.replies.length > 0) {
         const info = cmt.replies;
 
@@ -96,23 +105,29 @@ class App {
             type,
             cmt.id
           );
-
+          this.#jsonInfo.push(reply);
           // this.#personInfo.push(reply);
-          this._addComments(null, reply);
         });
       }
     });
+
+    this._setLocalStorageJson();
   }
 
   _addComments(comment, reply) {
-    console.log(comment ? comment.id : reply.id);
+    const id = comment ? comment.id : reply.id;
+    let colorText = "";
+    if (innerTxt) {
+      colorText = innerTxt;
+      innerTxt = "";
+    }
     const html = `
-      <div class="${comment ? "comment" : "comment reply"}">
+      <div class="${comment ? "comment" : "comment reply"}" data-key="${id}">
       ${reply ? "<hr>" : ""}
         <div class="vote-container">
           <div class="votes">
             <i class="fa-solid fa-plus"></i>
-            <span id="vote-count">${
+            <span class="vote-count">${
               comment ? comment.score : reply.score
             }</span>
             <i class="fa-solid fa-minus"></i>
@@ -130,9 +145,7 @@ class App {
               <h5>${comment ? comment.createdAt : reply.createdAt}</h5>
             </div>
             
-            <div class="cmt-reply" data-id="${
-              comment ? comment.id : reply.id
-            }"> <i class="fa-solid ${
+            <div class="cmt-reply" data-id="${id}"> <i class="fa-solid ${
       comment?.username === "juliusomo"
         ? "fa-ellipsis"
         : reply?.username === "juliusomo"
@@ -148,22 +161,22 @@ class App {
     ${
       comment?.username === "juliusomo"
         ? `<div class="edit-icons">` +
-          `<div class="pen" data-id="${comment ? comment.id : reply.id}">` +
+          `<div class="pen" data-id="${id}">` +
           '<i class="fa-solid fa-pen"></i>' +
           '<span id="pen-text"> Edit </span>' +
           "</div>" +
-          `<div class="trash" data-id="${comment ? comment.id : reply.id}">` +
+          `<div class="trash" data-id="${id}">` +
           '<i class="fa-solid fa-trash"></i>' +
           '<span id="trash-text"> Delete </span>' +
           "</div>" +
           "</div>"
         : reply?.username === "juliusomo"
         ? `<div class="edit-icons">` +
-          `<div class="pen" data-id="${comment ? comment.id : reply.id}">` +
+          `<div class="pen" data-id="${id}">` +
           '<i class="fa-solid fa-pen"></i>' +
           '<span id="pen-text"> Edit </span>' +
           "</div>" +
-          `<div class="trash" data-id="${comment ? comment.id : reply.id}">` +
+          `<div class="trash" data-id="${id}">` +
           '<i class="fa-solid fa-trash"></i>' +
           '<span id="trash-text"> Delete </span>' +
           "</div>" +
@@ -174,6 +187,9 @@ class App {
           </div>
          
           <p class="comment-text">
+          <span id="colored-text">${
+            reply?.txtColor ? reply.txtColor : ""
+          }</span>
             ${comment ? comment.message : reply.message}
           </p>
         </div>
@@ -223,6 +239,58 @@ class App {
     }
 
     if (update) update = false;
+
+    const cmt = document.querySelector(`.comment[data-key="${id}"]`);
+
+    this._addRemoveEL(cmt);
+  }
+
+  _addRemoveEL(comment) {
+    const add = comment.querySelector(".fa-plus");
+    const minus = comment.querySelector(".fa-minus");
+
+    add.addEventListener("click", this._handleScore.bind(this));
+    minus.addEventListener("click", this._handleScore.bind(this));
+    // const addButton = document.querySelectorAll(".fa-plus");
+
+    // const subtButton = document.querySelectorAll(".fa-minus");
+  }
+
+  _handleScore(e) {
+    const ele = e.target;
+
+    const parent = e.target.closest(".comment");
+    const votes = parent.querySelector(".vote-count");
+    // const reply = parent.querySelector(".cmt-reply");
+    this.#personInfo.forEach((person, i) => {
+      if (person.id === Number(parent.dataset.key)) {
+        if (ele.classList.contains("fa-plus")) {
+          person.score += 1;
+          votes.innerHTML = person.score;
+          this._setLocalStoragePerson();
+        } else if (ele.classList.contains("fa-minus")) {
+          person.score -= 1;
+          votes.innerHTML = person.score;
+          this._setLocalStoragePerson();
+        }
+      }
+    });
+
+    console.log(this.#jsonInfo);
+    this.#jsonInfo.forEach((info, i) => {
+      if (info.id === Number(parent.dataset.key)) {
+        if (ele.classList.contains("fa-plus")) {
+          info.score += 1;
+          votes.innerHTML = info.score;
+          this._setLocalStorageJson();
+          console.log("storage set");
+        } else if (ele.classList.contains("fa-minus")) {
+          info.score -= 1;
+          votes.innerHTML = info.score;
+          this._setLocalStorageJson();
+        }
+      }
+    });
   }
 
   _getCommentHtml(reply, update) {
@@ -264,7 +332,9 @@ class App {
     currId = id;
     const mainElement = e.target.parentElement.previousElementSibling;
     const username = mainElement.getElementsByTagName("h4")[0].innerHTML;
-    replyInput.value = `${"@" + username}`;
+    innerTxt = `${"@" + username}`;
+
+    replyInput.value = innerTxt;
     const end = replyInput.value.length;
     replyInput.setSelectionRange(end, end);
     replyInput.focus();
@@ -272,17 +342,21 @@ class App {
   }
 
   _mainUserInfo() {
-    const value = update
+    let value = update
       ? updateInput.value
       : reply
       ? replyInput.value
       : inputField.value;
-    console.log(value);
+    if (innerTxt && replyInput?.value) {
+      value = replyInput.value.replace(`${innerTxt}`, "");
+    } else if (innerTxt && updateInput.value) {
+      value = updateInput.value.replace(`${innerTxt}`, "");
+    }
     const userName = "juliusomo";
     const img = "images/avatars/image-juliusomo.webp";
     const score = 0;
     const currTime = new Date().getSeconds();
-    const ago = currTime + "second ago";
+    const ago = currTime + " seconds ago";
     const type = reply ? "reply" : "comment";
 
     const newObj = new PersonInfo(
@@ -293,12 +367,15 @@ class App {
       value,
       ago,
       type,
-      reply ? currId : {}
+      reply ? currId : {},
+      innerTxt ? innerTxt : ""
     );
 
     this.#personInfo.push(newObj);
     console.log(this.#personInfo);
-    this._setLocalStorage();
+    this._setLocalStoragePerson();
+
+    if (inputField.value) inputField.value = "";
     if (!reply) {
       this._addComments(newObj, null);
     } else {
@@ -342,7 +419,9 @@ class App {
       if (person.id === Number(cmtReply.dataset.id)) {
         const id = container.getAttribute("id");
         currId = id;
-        updateInput.value = person.message;
+        innerTxt = person.txtColor;
+        updateInput.value = innerTxt + person.message;
+
         const end = updateInput.value.length;
         updateInput.setSelectionRange(end, end);
         updateInput.focus();
@@ -359,28 +438,37 @@ class App {
   }
 
   _deleteComments(e) {
-    console.log("hello delete");
     const comment = e.target.closest(".comment");
-    console.log(comment);
     const cmtReply = comment.querySelector(".cmt-reply");
-    console.log(cmtReply);
     this.#personInfo.forEach((person, i) => {
       if (person.id === Number(cmtReply.dataset.id)) {
-        console.log("hey");
         this.#personInfo.splice(i, 1);
-        this._setLocalStorage();
+        this._setLocalStoragePerson();
         comment.remove();
       }
     });
   }
 
-  _setLocalStorage() {
+  _setLocalStoragePerson() {
     localStorage.setItem("comments", JSON.stringify(this.#personInfo));
+  }
+
+  _setLocalStorageJson() {
+    localStorage.setItem("jsonItems", JSON.stringify(this.#jsonInfo));
   }
 
   _getLocalStorage() {
     const data = JSON.parse(localStorage.getItem("comments"));
-    if (!data) return;
+    const jsonData = JSON.parse(localStorage.getItem("jsonItems"));
+
+    if (!data && !jsonData) return;
+
+    jsonData.forEach((data) => {
+      if (data.type === "reply") this._addComments(null, data);
+      else this._addComments(data, null);
+      this.#jsonInfo.push(data);
+    });
+
     data.forEach((ele) => {
       if (ele.type === "comment") this._addComments(ele, null);
       else this._addComments(null, ele);

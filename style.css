@@ -74,7 +74,7 @@ img {
   cursor: pointer;
 }
 
-#vote-count {
+.vote-count {
   font-size: 2.2rem;
   color: hsl(238, 40%, 52%);
 }
@@ -165,7 +165,8 @@ hr {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1.5rem;
-  padding: 2rem;
+
+  padding: 2rem 2rem 2rem 2rem;
   background-color: white;
   /* justify-content: center; */
   border-radius: 5px;
@@ -265,6 +266,7 @@ hr {
   align-items: center;
   justify-content: space-around;
   cursor: pointer;
+  transition: all 0.3s;
 }
 
 .pen:hover {
@@ -275,7 +277,7 @@ hr {
   flex-basis: 60%;
   height: 3.5rem;
   border-radius: 5px;
-
+  transition: all 0.3s;
   display: flex;
   align-items: center;
   justify-content: space-around;
@@ -331,6 +333,12 @@ hr {
 }
 
 .reply-cnt {
-  margin-bottom: 2rem;
+  margin-bottom: 3rem;
   margin-top: 3rem;
+}
+
+#colored-text {
+  color: blue;
+  font-weight: 500;
+  font-size: 1.6rem;
 }
